@@ -34,7 +34,9 @@ public class Database {
                 "password_hash TEXT NOT NULL," +
                 "failed_attempts INTEGER DEFAULT 0," +
                 "locked INTEGER DEFAULT 0," +
-                "role TEXT DEFAULT 'USER'" +
+                "role TEXT DEFAULT 'USER'," +
+                "two_factor_secret TEXT," +
+                "two_factor_enabled INTEGER DEFAULT 0" +
                 ")";
 
         String attempts = "CREATE TABLE IF NOT EXISTS login_attempts (" +
@@ -55,14 +57,16 @@ public class Database {
     // ---------- Users ----------
 
     public boolean saveUser(User user) {
-        String sql = "INSERT INTO users (username, password_hash, failed_attempts, locked, role) " +
-                "VALUES (?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO users (username, password_hash, failed_attempts, locked, role, " +
+                "two_factor_secret, two_factor_enabled) VALUES (?, ?, ?, ?, ?, ?, ?)";
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
             ps.setString(1, user.getUsername());
             ps.setString(2, user.getPasswordHash());
             ps.setInt(3, user.getFailedAttempts());
             ps.setInt(4, user.isLocked() ? 1 : 0);
             ps.setString(5, user.getRole());
+            ps.setString(6, user.getTwoFactorSecret());
+            ps.setInt(7, user.isTwoFactorEnabled() ? 1 : 0);
             ps.executeUpdate();
             return true;
         } catch (SQLException e) {
@@ -83,7 +87,9 @@ public class Database {
                             rs.getString("password_hash"),
                             rs.getString("role"),
                             rs.getInt("failed_attempts"),
-                            rs.getInt("locked") == 1
+                            rs.getInt("locked") == 1,
+                            rs.getString("two_factor_secret"),
+                            rs.getInt("two_factor_enabled") == 1
                     );
                 }
             }
@@ -94,14 +100,16 @@ public class Database {
     }
 
     public boolean updateUser(User user) {
-        String sql = "UPDATE users SET password_hash = ?, failed_attempts = ?, locked = ?, role = ? " +
-                "WHERE id = ?";
+        String sql = "UPDATE users SET password_hash = ?, failed_attempts = ?, locked = ?, role = ?, " +
+                "two_factor_secret = ?, two_factor_enabled = ? WHERE id = ?";
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
             ps.setString(1, user.getPasswordHash());
             ps.setInt(2, user.getFailedAttempts());
             ps.setInt(3, user.isLocked() ? 1 : 0);
             ps.setString(4, user.getRole());
-            ps.setInt(5, user.getId());
+            ps.setString(5, user.getTwoFactorSecret());
+            ps.setInt(6, user.isTwoFactorEnabled() ? 1 : 0);
+            ps.setInt(7, user.getId());
             ps.executeUpdate();
             return true;
         } catch (SQLException e) {
