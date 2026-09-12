@@ -10,6 +10,9 @@ public class User {
     private String role;
     private int failedAttempts;
     private boolean locked;
+    private String twoFactorSecret;
+    private boolean twoFactorEnabled;
+
 
     // Used when creating a brand-new user (before it has a DB id)
     public User(String username, String passwordHash, String role) {
@@ -18,17 +21,21 @@ public class User {
         this.role = role;
         this.failedAttempts = 0;
         this.locked = false;
+        this.twoFactorSecret = null;
+        this.twoFactorEnabled = false;
     }
 
     // Used when loading an existing user from the database
     public User(int id, String username, String passwordHash, String role,
-                int failedAttempts, boolean locked) {
+                int failedAttempts, boolean locked, String twoFactorSecret, boolean twoFactorEnabled) {
         this.id = id;
         this.username = username;
         this.passwordHash = passwordHash;
         this.role = role;
         this.failedAttempts = failedAttempts;
         this.locked = locked;
+        this.twoFactorSecret = twoFactorSecret;
+        this.twoFactorEnabled = twoFactorEnabled;
     }
 
     public int getId() { return id; }
@@ -51,11 +58,19 @@ public class User {
     public boolean isLocked() { return locked; }
     public void setLocked(boolean locked) { this.locked = locked; }
 
+
+    public String getTwoFactorSecret() { return twoFactorSecret; }
+    public void setTwoFactorSecret(String twoFactorSecret) { this.twoFactorSecret = twoFactorSecret; }
+
+    public boolean isTwoFactorEnabled() { return twoFactorEnabled; }
+    public void setTwoFactorEnabled(boolean twoFactorEnabled) { this.twoFactorEnabled = twoFactorEnabled; }
+
     public boolean isAdmin() { return "ADMIN".equalsIgnoreCase(role); }
 
     @Override
     public String toString() {
         return "User{id=" + id + ", username='" + username + "', role='" + role +
-                "', failedAttempts=" + failedAttempts + ", locked=" + locked + "}";
+                "', failedAttempts=" + failedAttempts + ", locked=" + locked +
+                ", twoFactorEnabled=" + twoFactorEnabled + "}";
     }
 }
