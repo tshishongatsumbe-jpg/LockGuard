@@ -1,3 +1,5 @@
+WTC-Y254THJF
+
 Secure Login System
 
 Structure
@@ -6,9 +8,9 @@ SecureLoginSystem (main)
 │
 ├── User (account data)
 ├── Database (SQLite access
-+ login attempt audit log)
+ + login attempt audit log)
   └── SecurityService (BCrypt
-  hashing, strength, lockout)
+  hashing, username validation, lockout)
 
 Setup
 1. Download two jars to a lib/ folder:
@@ -32,7 +34,7 @@ Central, group org.mindrot
 4. Run the manual tests:
    javac -cp "lib/*:out" -d out
    SecurityServiceTest.java
-   java -cp "out:lib/*"
+    -cp "out:lib/*"
    securelogin.SecurityServiceTest
    A secure_login.db file is created automatically in
    the working directory.
@@ -59,7 +61,7 @@ passwords under 8 characters or missing
 upper/lower/digit/special character classes.
 No accountability for failed logins — every
 attempt (success or failure) is written to
-login_attempts with a timestamp, and an
+log in_attempts with a timestamp, and an
 admin can review a user's recent attempts.
 Explicitly out of scope for v1 (worth stating in your
 presentation, not hiding):
