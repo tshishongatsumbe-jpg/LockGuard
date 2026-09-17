@@ -1,5 +1,9 @@
 package com.tshishongatsumbe.securelogin;
 
+import java.io.BufferedReader;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.sql.*;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -7,8 +11,9 @@ import java.util.List;
 
 /**
  * Responsible for communicating with the SQLite database.
- * Connects, creates tables, and saves/finds/updates users,
- * plus logs and retrieves login attempts for auditing.
+ * Loads its schema from schema.sql (src/main/resources), and
+ * saves/finds/updates users, plus logs and retrieves login
+ * attempts for auditing.
  */
 public class Database {
     private static final String URL = "jdbc:sqlite:secure_login.db";
@@ -28,29 +33,29 @@ public class Database {
     }
 
     public void createTables() {
-        String users = "CREATE TABLE IF NOT EXISTS users (" +
-                "id INTEGER PRIMARY KEY AUTOINCREMENT," +
-                "username TEXT UNIQUE NOT NULL," +
-                "password_hash TEXT NOT NULL," +
-                "failed_attempts INTEGER DEFAULT 0," +
-                "locked INTEGER DEFAULT 0," +
-                "role TEXT DEFAULT 'USER'," +
-                "two_factor_secret TEXT," +
-                "two_factor_enabled INTEGER DEFAULT 0" +
-                ")";
-
-        String attempts = "CREATE TABLE IF NOT EXISTS login_attempts (" +
-                "id INTEGER PRIMARY KEY AUTOINCREMENT," +
-                "username TEXT NOT NULL," +
-                "timestamp TEXT NOT NULL," +
-                "success INTEGER NOT NULL" +
-                ")";
-
-        try (Statement stmt = connection.createStatement()) {
-            stmt.execute(users);
-            stmt.execute(attempts);
-        } catch (SQLException e) {
-            System.out.println("Could not create tables: " + e.getMessage());
+        try (InputStream is = getClass().getClassLoader().getResourceAsStream("schema.sql")) {
+            if (is == null) {
+                System.out.println("schema.sql not found on classpath.");
+                return;
+            }
+            StringBuilder sql = new StringBuilder();
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    if (line.trim().startsWith("--") || line.trim().isEmpty()) continue;
+                    sql.append(line).append("\n");
+                }
+            }
+            String[] statements = sql.toString().split(";");
+            try (Statement stmt = connection.createStatement()) {
+                for (String statement : statements) {
+                    if (!statement.trim().isEmpty()) {
+                        stmt.execute(statement.trim());
+                    }
+                }
+            }
+        } catch (Exception e) {
+            System.out.println("Could not create tables from schema.sql: " + e.getMessage());
         }
     }
 
