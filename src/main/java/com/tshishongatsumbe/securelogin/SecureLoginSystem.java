@@ -5,18 +5,16 @@ import java.util.Scanner;
 
 /**
  * Controls the application flow and uses SecurityService + Database
- * to perform registration, login, lockout, 2FA, and admin operations.
+ * to perform registration, login, lockout, and admin operations.
  */
 public class SecureLoginSystem {
     private final Database database;
     private final SecurityService securityService;
-    private final TwoFactorService twoFactorService;
     private final Scanner scanner;
 
     public SecureLoginSystem() {
         this.database = new Database();
         this.securityService = new SecurityService(database);
-        this.twoFactorService = new TwoFactorService();
         this.scanner = new Scanner(System.in);
     }
 
@@ -83,26 +81,9 @@ public class SecureLoginSystem {
         User user = new User(username, hash, "USER");
         if (database.saveUser(user)) {
             System.out.println("Account created successfully!");
-            offerTwoFactorSetup(username);
         } else {
             System.out.println("Registration failed.");
         }
-    }
-
-    private void offerTwoFactorSetup(String username) {
-        System.out.print("Enable two-factor authentication now? (y/n): ");
-        String choice = scanner.nextLine().trim();
-        if (!choice.equalsIgnoreCase("y")) return;
-
-        User user = database.findUserByUsername(username);
-        String secret = twoFactorService.generateSecret();
-        user.setTwoFactorSecret(secret);
-        user.setTwoFactorEnabled(true);
-        database.updateUser(user);
-
-        System.out.println("Scan this into your authenticator app (or enter the secret manually):");
-        System.out.println(twoFactorService.buildOtpAuthUri(username, secret));
-        System.out.println("Secret key: " + secret);
     }
 
     private void login() {
@@ -112,25 +93,11 @@ public class SecureLoginSystem {
         String password = scanner.nextLine();
 
         SecurityService.LoginResult result = securityService.attemptLogin(username, password);
-
-        if (result.success && result.user.isTwoFactorEnabled()) {
-            if (!verifyTwoFactorCode(result.user)) {
-                System.out.println("Two-factor verification failed. Login denied.");
-                return;
-            }
-        }
-
         System.out.println(result.message);
 
         if (result.success && result.user.isAdmin()) {
             adminMenu();
         }
-    }
-
-    private boolean verifyTwoFactorCode(User user) {
-        System.out.print("Enter your 6-digit authenticator code: ");
-        String code = scanner.nextLine().trim();
-        return twoFactorService.verifyCode(user.getTwoFactorSecret(), code);
     }
 
     private void adminMenu() {
