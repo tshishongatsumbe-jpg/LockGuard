@@ -1,93 +1,97 @@
 WTC-Y254THJF
 
-Secure Login System
-
-Structure
-
-SecureLoginSystem (main)
-│
-├── User (account data)
-├── Database (SQLite access
- + login attempt audit log)
-  └── SecurityService (BCrypt
-  hashing, username validation, lockout)
-
-Setup
-1. Download two jars to a lib/ folder:
-
-sqlite-jdbc (e.g. sqlite-jdbc-
-3.46.0.0.jar ) — Maven Central
-
-jbcrypt (e.g. jbcrypt-0.4.jar ) — Maven
-Central, group org.mindrot
-2. Compile:
-   javac -cp "lib/*" -d out User.java
-   Database.java LoginAttempt.java
-   SecurityService.java
-   SecureLoginSystem.java
-
-3. Run:
-   java -cp "out:lib/*"
-   securelogin.SecureLoginSystem
-   (Windows: use ; instead of : in the
-   classpath.)
-4. Run the manual tests:
-   javac -cp "lib/*:out" -d out
-   SecurityServiceTest.java
-    -cp "out:lib/*"
-   securelogin.SecurityServiceTest
-   A secure_login.db file is created automatically in
-   the working directory.
-   Threat model
-   Defended against:
-   Plaintext password exposure — passwords are
-   hashed with BCrypt (work factor 12) before
-   storage; the DB never holds a recoverable
-   password.
-   Offline brute-forcing of stolen hashes —
-
-BCrypt is deliberately slow (unlike SHA-
-256/MD5), making large-scale hash cracking
-
-expensive.
-
-Online brute-forcing — account locks after 5
-failed attempts.
-SQL injection — all queries use
-PreparedStatement with parameter binding,
-never string concatenation.
-Weak passwords — registration rejects
-passwords under 8 characters or missing
-upper/lower/digit/special character classes.
-No accountability for failed logins — every
-attempt (success or failure) is written to
-log in_attempts with a timestamp, and an
-admin can review a user's recent attempts.
-Explicitly out of scope for v1 (worth stating in your
-presentation, not hiding):
-No network-level protections (this is a local
-console app, not a hardened server)
-No rate-limiting by IP/device, only by account
-No password reset / forgot-password flow
-No 2FA
-First admin account must be promoted
-manually via a direct SQL UPDATE (no
-bootstrap admin flow yet)
-No encryption at rest for the SQLite file itself
-(OS-level disk encryption assumed)
-One-minute explanation
-
-"I built a secure login system using Java and
-SQLite. The User class represents
-users and their account information. The Database
-class handles communication
-with SQLite, including a login-attempts audit log.
-The SecurityService handles
-the security features: BCrypt password hashing,
-password strength checks, and
-account lockout. The main class controls the
-application flow. The system
-locks an account after five failed login attempts to
-protect against
-brute-force attacks, and every attempt is logged
-for accountability."
+LockGuard — Secure Login System
+A secure login system built in Java to demonstrate real-world authentication security: password hashing, brute-force protection, and audit logging — not just a login form that works.
+Why This Exists
+Most login demos check one thing: does the password match? LockGuard is built around a different question — what happens when someone tries to break it?
+Key Security Features
+Password hashing — BCrypt (work factor 12), never plaintext or weak reversible hashing
+Brute-force protection — account locks after 5 failed login attempts
+SQL injection defense — all queries use PreparedStatement, no string concatenation
+Password policy enforcement — minimum 8 characters, requires upper/lower/digit/special character
+Audit logging — every login attempt (success/failure) is recorded and viewable by admins
+Externalized schema — SQL schema lives in schema.sql, not hardcoded in Java
+Architecture
+SecureLoginSystem  ->  SecurityService  ->  Database
+   (console menu)      (hashing, rules,     (SQLite via JDBC)
+                        lockout logic)
+Class
+Responsibility
+SecureLoginSystem
+Console menu — register, log in, exit; admin sub-menu on admin login
+SecurityService
+Password hashing, strength/username validation, lockout logic
+Database
+SQLite connection, user CRUD, login attempt logging
+User
+Data model — id, username, passwordHash, role, failedAttempts, locked
+LoginAttempt
+Data model for the audit log
+TwoFactorService
+Stub only — see "What's Not Included" below
+Design Decisions
+Choice
+Why
+BCrypt over SHA-256
+BCrypt is deliberately slow — resists offline brute-force even if the database is stolen
+Lockout after 5 attempts
+Balances usability against online brute-force risk
+PreparedStatement everywhere
+Eliminates SQL injection as an attack vector by design, not convention
+Schema in schema.sql
+Keeps data structure separate from logic — easier to audit, easier to change
+JUnit 5 test suite, isolated DB
+14 automated tests run against a separate test_secure_login.db, deleted before/after each run, so tests never pollute real data or each other
+What's Not Included (and Why)
+2FA (TOTP) — TwoFactorService.java is fully designed but not wired into the live build. The dev.samstevens.totp dependency could not be reliably resolved in this environment due to a persistent network/DNS issue reaching Maven Central. Documented here rather than hidden or faked.
+Network-level protections (rate limiting by IP, HTTPS enforcement) — out of scope for this build
+Password reset flow — out of scope for this build
+Encryption at rest — database file itself is not the threat model here
+Admin promotion is currently manual (direct database update), not exposed through the app
+Tech Stack
+Java 17 - Maven - SQLite (JDBC) - BCrypt (jBCrypt) - JUnit 5 - Docker
+Project Structure
+LockGuard/
+├── src/
+│   ├── main/
+│   │   ├── java/com/tshishongatsumbe/securelogin/
+│   │   │   ├── Database.java
+│   │   │   ├── LoginAttempt.java
+│   │   │   ├── SecureLoginSystem.java
+│   │   │   ├── SecurityService.java
+│   │   │   ├── TwoFactorService.java
+│   │   │   └── User.java
+│   │   └── resources/
+│   │       └── schema.sql
+│   └── test/
+│       └── java/com/tshishongatsumbe/securelogin/
+│           └── SecurityServiceTest.java
+├── Dockerfile
+├── Makefile
+├── pom.xml
+└── README.md
+Getting Started
+Prerequisites
+Java 17+
+Maven (or use IntelliJ's bundled Maven)
+Run it
+mvn compile exec:java
+Or use the provided Makefile:
+make run
+Run the tests
+mvn test
+Or:
+make test
+Run with Docker
+docker build -t lockguard .
+docker run -it --rm lockguard
+Testing
+The project includes a JUnit 5 test suite covering:
+Password hashing and verification
+Password strength validation
+Username validation
+Account lockout after 5 failed attempts, and recovery via admin unlock
+Duplicate username rejection (database constraint)
+Each test run uses an isolated test database (test_secure_login.db), deleted before and after every test, so results are consistent and never depend on leftover state.
+License
+This project was built as a cybersecurity elective assignment
